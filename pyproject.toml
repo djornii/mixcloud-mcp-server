@@ -4,10 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mixcloud-mcp-server"
-version = "0.1.0"
+dynamic = ["version"]
 description = "MCP server for the Mixcloud API: search, browse, upload and edit shows"
 readme = "README.md"
 license = "MIT"
+authors = [{ name = "djornii" }]
 requires-python = ">=3.10"
 keywords = ["mcp", "mixcloud", "model-context-protocol", "podcast"]
 classifiers = [
@@ -28,8 +29,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/djornii/mixcloud-mcp-server"
+Repository = "https://github.com/djornii/mixcloud-mcp-server"
 Issues = "https://github.com/djornii/mixcloud-mcp-server/issues"
+Changelog = "https://github.com/djornii/mixcloud-mcp-server/blob/main/CHANGELOG.md"
 
 [project.scripts]
 mixcloud-mcp-server = "mixcloud_mcp_server.server:main"
@@ -40,6 +42,10 @@ dev = [
     "respx>=0.21",
     "ruff>=0.6",
 ]
+
+[tool.hatch.version]
+source = "code"
+path = "src/mixcloud_mcp_server/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mixcloud_mcp_server"]
