@@ -1,0 +1,44 @@
+name: release
+
+# Publishing is driven by tags: push vX.Y.Z and this workflow ships that exact
+# version to PyPI via Trusted Publishing, then opens a GitHub Release.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # OIDC for PyPI Trusted Publishing (no stored token)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi # must match the pending publisher's environment name on PyPI
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build
+        run: uv build
+
+      # The tag is the source of truth for the release, so refuse to publish if
+      # it disagrees with the version hatchling read from __init__.py.
+      - name: Verify tag matches package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(unzip -p dist/*.whl '*/METADATA' | awk -F': ' '/^Version: /{print $2}')"
+          echo "tag=$tag package=$pkg"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag $tag does not match package version $pkg"
+            exit 1
+          fi
+
+      - name: Publish to PyPI
+        run: uv publish --trusted-publishing always
+
+      - name: Create GitHub Release
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --title "$GITHUB_REF_NAME"
+        env:
+          GH_TOKEN: ${{ github.token }}

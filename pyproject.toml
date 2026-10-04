@@ -31,7 +31,7 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/djornii/mixcloud-mcp-server"
 Issues = "https://github.com/djornii/mixcloud-mcp-server/issues"
-Changelog = "https://github.com/djornii/mixcloud-mcp-server/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/djornii/mixcloud-mcp-server/releases"
 
 [project.scripts]
 mixcloud-mcp-server = "mixcloud_mcp_server.server:main"
