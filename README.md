@@ -1,108 +1,183 @@
-# mixcloud-mcp-server
+![Mixcloud MCP Server](public/mixcloud.svg)
+
+<div align="center" style="line-height: 1;">
+    <a href="https://github.com/modelcontextprotocol/servers" target="_blank" style="margin: 2px;">
+        <img alt="MCP Server" src="https://badge.mcpx.dev?type=server" style="display: inline-block; vertical-align: middle;"/>
+    </a>
+    <a href="https://pypi.org/project/mixcloud-mcp-server/" target="_blank" style="margin: 2px;">
+        <img alt="PyPI" src="https://img.shields.io/pypi/dw/mixcloud-mcp-server
+        " style="display: inline-block; vertical-align: middle;"/>
+    </a>
+    <a href="https://github.com/djornii/mixcloud-mcp-server/blob/main/LICENSE" target="_blank" style="margin: 2px;">
+        <img alt="MIT License" src="https://img.shields.io/github/license/djornii/mixcloud-mcp-server" style="display: inline-block; vertical-align: middle;"/>
+    </a>
+</div>
+
+---
 
 An [MCP](https://modelcontextprotocol.io) server for the [Mixcloud](https://www.mixcloud.com) API.
-Any MCP client can drive it: search and browse shows, follow/favourite/repost, and upload or edit
+Any MCP client can drive it: search and browse shows, follow/favorite/repost, and upload or edit
 your own shows — including scheduled publishing.
 
-Talk to it in plain language: *"find me a 90-minute Chicago house set from last year"* or
-*"upload `set.mp3` as an unlisted show, chapters at 0:00 and 10:00"*.
+- [Installation](#installation)
+- [Client setup](#client-setup)
+- [Configuration](#configuration)
+- [Authorization](#authorization)
+- [Tools](#tools)
+  - [Read (no token)](#read-no-token)
+  - [Account actions (token)](#account-actions-token)
+  - [Upload and edit (token)](#upload-and-edit-token)
+  - [OAuth](#oauth)
+- [Safety](#safety)
 
-## Install
+## Installation
 
 ```bash
-uv tool install git+https://github.com/djornii/mixcloud-mcp-server
-# or, from a clone:
-uv tool install .
+uv tool install mixcloud-mcp-server
 ```
-
-Requires Python 3.10+. The only runtime dependencies are `mcp`, `httpx` and `python-dotenv`.
 
 Check the installation:
 
-```bash
+```sh
 mixcloud-mcp-server --print-config   # resolved paths and which credentials exist, no secrets
 mixcloud-mcp-server --version
 ```
 
 ## Client setup
 
-The server speaks **stdio**, so every client config is just "run this command".
+The server speaks **stdio**. The commands below use `uvx`, which runs the server straight from PyPI without a separate install.
 
-**Claude Desktop** — `claude_desktop_config.json`:
-
-```json
-{ "mcpServers": { "mixcloud": { "command": "mixcloud-mcp-server", "env": { "MIXCLOUD_ENV_FILE": "/home/you/.config/mixcloud-mcp-server/.env" } } } }
-```
-
-**Claude Code**
+### Claude Code
 
 ```bash
-claude mcp add mixcloud -- mixcloud-mcp-server
+claude mcp add mixcloud -- uvx mixcloud-mcp-server
 ```
 
-**OpenCode** — `opencode.json` (V2 puts local servers under `mcp.servers`):
-
-```json
-{ "$schema": "https://opencode.ai/config.json", "mcp": { "servers": { "mixcloud": { "type": "local", "command": ["mixcloud-mcp-server"] } } } }
-```
-
-Or from the CLI, which writes the same entry:
+### Codex CLI
 
 ```bash
-opencode mcp add mixcloud -- mixcloud-mcp-server
+codex mcp add mixcloud -- uvx mixcloud-mcp-server
 ```
 
-**Any other client**: run `mixcloud-mcp-server` and pass `MIXCLOUD_ENV_FILE` in its environment.
+### OpenCode
 
-Running it by hand is normal and silent — it is waiting for JSON-RPC on stdin.
+```bash
+opencode mcp add mixcloud -- uvx mixcloud-mcp-server
+```
+
+Or manually in `opencode.json`:
+
+```json
+{
+    "mcp": {
+        "servers": {
+            "mixcloud": {
+                "type": "local",
+                "command": ["uvx", "mixcloud-mcp-server"]
+            }
+        }
+    }
+}
+```
+
+### Pi
+
+Pi reads MCP servers through the `pi-mcp-adapter` package:
+
+```bash
+pi install npm:pi-mcp-adapter
+pi mcp add mixcloud -- uvx mixcloud-mcp-server
+```
+
+Use `-l` to write the entry into the project configuration instead of the user-level one. Pass
+the env file with `--env MIXCLOUD_ENV_FILE=...`.
+
+### Hermes Agent
+
+```sh
+hermes mcp add mixcloud --command uvx --args mixcloud-mcp-server
+```
+
+In `.hermes/config.yaml` recommended to set Hermes Agent's env file:
+
+```yaml
+mcp_servers:
+    mixcloud:
+        command: uvx
+        args: ["mixcloud-mcp-server"]
+        env:
+            MIXCLOUD_ENV_FILE: "/home/you/.config/mixcloud-mcp-server/.env"
+```
+
+Then check with `hermes mcp list`.
+
+### Any other client
+
+Run `uvx mixcloud-mcp-server` and pass `MIXCLOUD_ENV_FILE` in its environment.
 
 ## Configuration
 
-Copy `.env.example` to the path `mixcloud-mcp-server --print-config` reports and fill it in.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `MIXCLOUD_ENV_FILE` | `$XDG_CONFIG_HOME/mixcloud-mcp-server/.env` (~`~/.config/…`) | Token store: loaded at startup, written by `exchange_code` |
-| `MIXCLOUD_UPLOAD_DIR` | `$XDG_DATA_HOME/mixcloud-mcp-server/uploads` (~`~/.local/share/…`) | The **only** directory uploads may read files from |
-| `MIXCLOUD_CLIENT_ID` | — | OAuth app id, needed once for authorisation |
-| `MIXCLOUD_CLIENT_SECRET` | — | OAuth secret, needed once for authorisation |
-| `MIXCLOUD_TOKEN` | — | Access token; written for you by `exchange_code` |
+| Variable                 | Default                                                            | Purpose                                                    |
+| ------------------------ | ------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `MIXCLOUD_ENV_FILE`      | `$XDG_CONFIG_HOME/mixcloud-mcp-server/.env` (~`~/.config/…`)       | Token store: loaded at startup, written by `exchange_code` |
+| `MIXCLOUD_UPLOAD_DIR`    | `$XDG_DATA_HOME/mixcloud-mcp-server/uploads` (~`~/.local/share/…`) | The **only** directory uploads may read files from         |
+| `MIXCLOUD_CLIENT_ID`     | —                                                                  | OAuth app id, needed once for authorization                |
+| `MIXCLOUD_CLIENT_SECRET` | —                                                                  | OAuth secret, needed once for authorization                |
+| `MIXCLOUD_TOKEN`         | —                                                                  | Access token; written for you by `exchange_code`           |
 
-Create the OAuth app at <https://www.mixcloud.com/settings/applications/>. The redirect URI only
-matters if you use one; the default flow shows the code on screen.
 
-### Authorising
+## Authorization
 
-Ask the agent, or call the tools directly:
+Go to https://www.mixcloud.com/developers/create/ and create an app. You will get the `CLIENT ID` and `CLIENT SECRET`, write them in your `.env`.
+
+Ask the agent:
 
 1. `auth_url()` — returns a link to open in a browser
-2. open it, allow access, copy the code
-3. `exchange_code(code)` — stores the token in the env file (mode `0600`) and never returns it
+2. Open it, allow access, copy the code
+3. `exchange_code(code)` — stores the token in the env file and never returns it
 
 `check_token()` verifies the token; `clear_token()` forgets it locally. Mixcloud exposes no
-revoke endpoint, so revoking access has to be done on mixcloud.com itself.
+revoke endpoint.
 
 ## Tools
 
-**Read (no token):** `search`, `get_object`, `get_show`, `get_user`, `get_tag`, `list_connection`,
-`user_shows`, `browse`, `genre_shows`, `embed_html`, `oembed`
+### Read (no token)
 
-**Account (token):** `me`, `follow_user`, `favorite_show`, `repost_show`, `listen_later`,
-`upload_show`, `edit_show`
+- `search` - Search shows, users, or tags by query; supports result type and pagination.
+- `get_object` - Fetch a show, user, tag, or city by Mixcloud key or URL; optionally include metadata or authenticated fields.
+- `get_show` - Fetch a show's key details, including its description, play and favorite counts, and tags.
+- `get_user` - Fetch a user profile by key or URL.
+- `get_tag` - Fetch a genre, city, or a genre combined with a city.
+- `list_connection` - List an object's followers, following, favorites, shows, or listens; supports pagination and date filters.
+- `user_shows` - List a user's shows with pagination and optional date filters.
+- `browse` - List site-wide popular, hot, or new shows.
+- `genre_shows` - List shows for a genre using one of the lists available for that tag.
+- `embed_html` - Generate the HTML player embed for a show, with optional size and color.
+- `oembed` - Get oEmbed data for a Mixcloud show URL.
 
-**OAuth:** `auth_url`, `exchange_code`, `check_token`, `clear_token`
+### Account actions (token)
+
+- `me` - Fetch the authorized user's profile; optionally include metadata.
+- `follow_user` - Follow a user, or unfollow them with `undo=true`.
+- `favorite_show` - Favorite a show, or remove it from favorites with `undo=true`.
+- `repost_show` - Repost a show, or remove the repost with `undo=true`.
+- `listen_later` - Add a show to Listen Later, or remove it with `undo=true`.
+
+### Upload and edit (token)
+
+- `upload_show` - Upload an audio show with optional artwork and metadata; files must be in `MIXCLOUD_UPLOAD_DIR`, and visibility defaults to unlisted.
+- `edit_show` - Edit an uploaded show’s metadata, artwork, or visibility; tags, sections, and hosts are replaced wholesale when supplied.
+
+### OAuth
+
+- `auth_url` - Generate the Mixcloud authorization URL; optionally specify a redirect URI.
+- `exchange_code` - Exchange an OAuth code for an access token, then save the token locally without revealing it.
+- `check_token` - Check whether the saved access token is valid and identify the authorized account.
+- `clear_token` - Forget the access token locally; optionally remove it from the env file (does not revoke access on Mixcloud).
 
 Objects are addressed by Mixcloud key: shows `/username/show-name/`, users `/username/`,
 tags `/genres/funk/`, cities `/genres/city:athens/`. Full URLs are accepted everywhere a key is.
-
-Notes that surprise people:
-
-- `upload_show` uploads **unlisted** (private link) unless you pass `unlisted=False`.
-- `edit_show` replaces `tags`, `sections` and `hosts` wholesale — re-send the existing ones when
-  adding a single chapter.
-- `publish_date`, `disable_comments`, `hide_stats` and `hosts` require a Pro account.
-- Uploads accept `.mp3` up to 4 GB and pictures up to 10 MB, and the files must live inside
-  `MIXCLOUD_UPLOAD_DIR` (relative paths resolve there).
 
 ## Safety
 
@@ -113,19 +188,4 @@ Notes that surprise people:
 - The client secret is read from the environment and never returned to the model.
 - Redirects are not followed for authenticated calls, so a token cannot be replayed to
   another host.
-
-Works with both `mcp` 1.x and 2.x.
-
-## Development
-
-See [AGENTS.md](AGENTS.md) for the commands and the invariants this codebase holds to.
-
-```bash
-uv sync
-uv run pytest
-uv run ruff check .
-```
-
-## License
-
-MIT
+- If you don't use some tools, it's recommended to turn them off in your agent.
