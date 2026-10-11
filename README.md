@@ -5,8 +5,7 @@
         <img alt="MCP Server" src="https://badge.mcpx.dev?type=server" style="display: inline-block; vertical-align: middle;"/>
     </a>
     <a href="https://pypi.org/project/mixcloud-mcp-server/" target="_blank" style="margin: 2px;">
-        <img alt="PyPI" src="https://img.shields.io/pypi/dw/mixcloud-mcp-server
-        " style="display: inline-block; vertical-align: middle;"/>
+        <img alt="PyPI" src="https://img.shields.io/pypi/dw/mixcloud-mcp-server" style="display: inline-block; vertical-align: middle;"/>
     </a>
     <a href="https://github.com/djornii/mixcloud-mcp-server/blob/main/LICENSE" target="_blank" style="margin: 2px;">
         <img alt="MIT License" src="https://img.shields.io/github/license/djornii/mixcloud-mcp-server" style="display: inline-block; vertical-align: middle;"/>
